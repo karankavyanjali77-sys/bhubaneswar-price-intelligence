@@ -210,9 +210,23 @@ with col_r:
 st.markdown('<div class="section-header">🏆 Source Scorecard</div>', unsafe_allow_html=True)
 sc_display = scorecard.copy()
 sc_display.columns = ["Source", "# Cheapest (out of 25)", "# Costliest (out of 25)", "Avg Premium Over Cheapest (%)"]
-st.dataframe(sc_display.style.background_gradient(
-    subset=["Avg Premium Over Cheapest (%)"], cmap="RdYlGn_r"
-).format({"Avg Premium Over Cheapest (%)": "{:.1f}%"}), use_container_width=True, hide_index=True)
+def color_premium(val):
+    if val == 0:
+        return "background-color: #c6f6d5; color: #276749; font-weight: 600"
+    elif val < 15:
+        return "background-color: #fefcbf; color: #744210"
+    elif val < 25:
+        return "background-color: #feebc8; color: #7b341e"
+    else:
+        return "background-color: #fed7d7; color: #822727; font-weight: 600"
+
+st.dataframe(
+    sc_display.style
+        .map(color_premium, subset=["Avg Premium Over Cheapest (%)"])
+        .format({"Avg Premium Over Cheapest (%)": "{:.1f}%"}),
+    use_container_width=True,
+    hide_index=True
+)
 
 # ── ML Cluster View ──────────────────────────────────────────────────────────
 st.markdown('<div class="section-header">🤖 ML Item Clustering — Price Level vs Volatility</div>', unsafe_allow_html=True)
@@ -238,10 +252,18 @@ st.markdown('<div class="section-header">🗃️ Raw Price Data</div>', unsafe_a
 cat_filter = st.multiselect("Filter by category", df["category"].unique().tolist(), default=df["category"].unique().tolist())
 filtered = df[df["category"].isin(cat_filter)][["item","category","unit","blinkit","instamart","bigbasket","local_market","cheapest_source","saving_vs_blinkit_inr","saving_vs_blinkit_pct"]]
 filtered.columns = ["Item","Category","Unit","Blinkit (₹)","Instamart (₹)","BigBasket (₹)","Local Market (₹)","Cheapest Source","Saving vs Blinkit (₹)","Saving vs Blinkit (%)"]
+def color_saving(val):
+    if not isinstance(val, (int, float)) or pd.isna(val):
+        return ""
+    if val >= 30: return "background-color: #c6f6d5; color: #276749; font-weight: 600"
+    if val >= 20: return "background-color: #9ae6b4; color: #276749"
+    if val >= 10: return "background-color: #fefcbf; color: #744210"
+    return ""
+
 st.dataframe(filtered.style.format({
     "Saving vs Blinkit (%)": lambda x: f"{x}%" if pd.notna(x) else "—",
     "Saving vs Blinkit (₹)": lambda x: f"₹{x}" if pd.notna(x) else "—",
-}).background_gradient(subset=["Saving vs Blinkit (%)"], cmap="Greens"), use_container_width=True, hide_index=True)
+}).map(color_saving, subset=["Saving vs Blinkit (%)"]), use_container_width=True, hide_index=True)
 
 csv = filtered.to_csv(index=False)
 st.download_button("⬇ Download Price Data as CSV", csv, "bhubaneswar_prices_april2026.csv", "text/csv")
